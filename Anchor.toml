@@ -12,7 +12,7 @@ micro_savings = "AXP5XUGdGcAYpmxzmJr54vrvdvgbsohGDNA3hUJ3oC3B"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "https://api.devnet.solana.com"
 wallet = "/home/boppani/.config/solana/devnet.json"
 
 [scripts]
