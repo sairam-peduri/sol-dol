@@ -1,28 +1,35 @@
-// src/WalletConnectionProvider.js
-import React, { useMemo } from "react";
+import React, { useMemo } from 'react';
 import {
   ConnectionProvider,
-  WalletProvider,
-} from "@solana/wallet-adapter-react";
+  WalletProvider
+} from '@solana/wallet-adapter-react';
+import {
+  WalletModalProvider
+} from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import {
-  WalletModalProvider,
-} from "@solana/wallet-adapter-react-ui";
+  SolflareWalletAdapter
+} from '@solana/wallet-adapter-wallets';
+import { clusterApiUrl } from '@solana/web3.js';
 
-require('@solana/wallet-adapter-react-ui/styles.css'); // make sure this is included once
+require('@solana/wallet-adapter-react-ui/styles.css');
 
 const WalletConnectionProvider = ({ children }) => {
-  const endpoint = useMemo(() => "https://api.devnet.solana.com", []);
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  const network = 'devnet';
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter()
+    ],
+    []
+  );
 
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
+        <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );

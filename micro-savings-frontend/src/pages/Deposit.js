@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import * as anchor from '@coral-xyz/anchor';
 import idl from '../idl/micro_savings.json';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+
+function createSafeProgram(idl, programId, provider) {
+  const safeIdl = { ...idl, accounts: idl.accounts ?? [] };
+  return new anchor.Program(safeIdl, programId, provider);
+}
 
 const PROGRAM_ID = new anchor.web3.PublicKey(idl.address);
 
@@ -16,34 +21,41 @@ export default function Deposit() {
     if (!publicKey) return;
 
     const provider = new anchor.AnchorProvider(connection, window.solana, {});
-    const program = new anchor.Program(idl, PROGRAM_ID, provider);
-    setProgram(program);
+    const programInstance = createSafeProgram(idl, PROGRAM_ID, provider);
+    setProgram(programInstance);
   }, [publicKey, connection]);
 
   const deposit = async () => {
     if (!program || !publicKey) return alert('Connect wallet first');
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return alert('Enter valid amount');
 
     const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
+
+    const [savingsPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("savings"), publicKey.toBuffer()],
+      PROGRAM_ID
+    );
+
     try {
       await program.methods
         .deposit(new anchor.BN(lamports))
         .accounts({
-          savings: publicKey,
+          savings: savingsPDA,
           user: publicKey
         })
         .rpc();
 
-      alert('Deposited successfully');
+      alert('✅ Deposited successfully!');
       setAmount('');
     } catch (e) {
       console.error(e);
-      alert('Error: ' + e.message);
+      alert('⚠️ Error: ' + e.message);
     }
   };
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow-md">
-      <h1 className="text-2xl font-semibold text-indigo-700 mb-4">Deposit SOL</h1>
+      <h1 className="text-2xl font-semibold text-indigo-700 mb-4">💰 Deposit SOL</h1>
 
       <div className="flex flex-col gap-4">
         <input

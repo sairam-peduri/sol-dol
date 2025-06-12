@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 declare_id!("AXP5XUGdGcAYpmxzmJr54vrvdvgbsohGDNA3hUJ3oC3B");
 
 #[program]
-:contentReference[oaicite:2]{index=2}
+pub mod micro_savings {
     use super::*;
 
     pub fn initialize_account(ctx: Context<InitializeAccount>) -> Result<()> {
@@ -44,55 +44,62 @@ declare_id!("AXP5XUGdGcAYpmxzmJr54vrvdvgbsohGDNA3hUJ3oC3B");
 }
 
 #[derive(Accounts)]
-:contentReference[oaicite:3]{index=3}
-    :contentReference[oaicite:4]{index=4}
-    :contentReference[oaicite:5]{index=5}
-    :contentReference[oaicite:6]{index=6}
-    :contentReference[oaicite:7]{index=7}
+pub struct InitializeAccount<'info> {
+    #[account(init, payer = user, space = 8 + 32 + 8)] // 48 bytes
+    pub savings: Account<'info, Savings>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-:contentReference[oaicite:8]{index=8}
-    :contentReference[oaicite:9]{index=9}
-    :contentReference[oaicite:10]{index=10}
-    :contentReference[oaicite:11]{index=11}
+pub struct Deposit<'info> {
+    #[account(mut, has_one = user)]
+    pub savings: Account<'info, Savings>,
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]
-:contentReference[oaicite:12]{index=12}
-    :contentReference[oaicite:13]{index=13}
-    :contentReference[oaicite:14]{index=14}
-    :contentReference[oaicite:15]{index=15}
+pub struct Withdraw<'info> {
+    #[account(mut, has_one = user)]
+    pub savings: Account<'info, Savings>,
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]
-:contentReference[oaicite:16]{index=16}
-    :contentReference[oaicite:17]{index=17}
-    :contentReference[oaicite:18]{index=18}
-    :contentReference[oaicite:19]{index=19}
-    :contentReference[oaicite:20]{index=20}
+pub struct CreateGoal<'info> {
+    #[account(init, payer = user, space = 8 + 32 + 8 + 8 + 4 + 256)] // 316 bytes
+    pub goal: Account<'info, Goal>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-:contentReference[oaicite:21]{index=21}
-    :contentReference[oaicite:22]{index=22}
-    :contentReference[oaicite:23]{index=23}
-    :contentReference[oaicite:24]{index=24}
+pub struct DepositToGoal<'info> {
+    #[account(mut, has_one = user)]
+    pub goal: Account<'info, Goal>,
+    pub user: Signer<'info>,
 }
 
 #[account]
-:contentReference[oaicite:25]{index=25}
+pub struct Savings {
+    pub user: Pubkey,
+    pub balance: u64,
+}
 
 #[account]
-:contentReference[oaicite:26]{index=26}
-    :contentReference[oaicite:27]{index=27}
-    :contentReference[oaicite:28]{index=28}
-    :contentReference[oaicite:29]{index=29}
-    :contentReference[oaicite:30]{index=30}
+pub struct Goal {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub saved: u64,
+    pub description: String,
 }
 
 #[error_code]
-:contentReference[oaicite:31]{index=31}
-    :contentReference[oaicite:32]{index=32}
-    :contentReference[oaicite:33]{index=33}
+pub enum ErrorCode {
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+    #[msg("Unauthorized")]
+    Unauthorized,
 }

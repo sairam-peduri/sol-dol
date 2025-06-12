@@ -8,6 +8,45 @@
   },
   "instructions": [
     {
+      "name": "create_goal",
+      "discriminator": [
+        229,
+        63,
+        42,
+        239,
+        1,
+        226,
+        219,
+        196
+      ],
+      "accounts": [
+        {
+          "name": "goal",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "deposit",
       "discriminator": [
         242,
@@ -29,6 +68,38 @@
           "signer": true,
           "relations": [
             "savings"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit_to_goal",
+      "discriminator": [
+        91,
+        42,
+        156,
+        34,
+        39,
+        208,
+        194,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "goal",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "signer": true,
+          "relations": [
+            "goal"
           ]
         }
       ],
@@ -104,6 +175,19 @@
   ],
   "accounts": [
     {
+      "name": "Goal",
+      "discriminator": [
+        163,
+        66,
+        166,
+        245,
+        130,
+        131,
+        207,
+        26
+      ]
+    },
+    {
       "name": "Savings",
       "discriminator": [
         65,
@@ -121,10 +205,39 @@
     {
       "code": 6000,
       "name": "InsufficientFunds",
-      "msg": "Not enough funds to withdraw"
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
     }
   ],
   "types": [
+    {
+      "name": "Goal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "saved",
+            "type": "u64"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          }
+        ]
+      }
+    },
     {
       "name": "Savings",
       "type": {

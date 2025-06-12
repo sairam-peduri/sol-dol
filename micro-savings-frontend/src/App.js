@@ -7,11 +7,12 @@ import Withdraw from './pages/Withdraw';
 import Transactions from './pages/Transactions';
 import Profile from './pages/Profile';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 function App() {
   return (
     <Router>
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex flex-col md:flex-row h-screen bg-gray-100">
         {/* Sidebar */}
         <Sidebar />
 
@@ -22,7 +23,7 @@ function App() {
             <WalletMultiButton className="!bg-indigo-600 hover:!bg-indigo-700 text-white font-semibold py-2 px-4 rounded" />
           </header>
 
-          {/* Routed content */}
+          {/* Page Content */}
           <main className="flex-1 p-6 overflow-y-auto">
             <Routes>
               <Route path="/" element={<Dashboard />} />
