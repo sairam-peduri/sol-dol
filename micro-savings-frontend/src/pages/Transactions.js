@@ -13,15 +13,18 @@ export default function Transactions() {
 
       setLoading(true);
       try {
-        const sigs = await connection.getSignaturesForAddress(publicKey, { limit: 10 });
-        const transactions = await connection.getParsedTransactions(
-          sigs.map((s) => s.signature)
+        const signatures = await connection.getSignaturesForAddress(publicKey, {
+          limit: 10,
+        });
+
+        const parsedTxns = await connection.getParsedTransactions(
+          signatures.map((sig) => sig.signature),
+          { maxSupportedTransactionVersion: 0 }
         );
 
-        const filtered = transactions.filter(Boolean); // remove nulls
-        setTxns(filtered);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
+        setTxns(parsedTxns.filter(Boolean));
+      } catch (err) {
+        console.error("🚨 Error fetching transactions:", err);
       } finally {
         setLoading(false);
       }
@@ -35,19 +38,21 @@ export default function Transactions() {
       <h1 className="text-2xl font-semibold mb-4 text-indigo-700">🔄 Recent Transactions</h1>
 
       {loading ? (
-        <div className="text-indigo-500 font-medium">Fetching transactions...</div>
+        <p className="text-indigo-500 font-medium">Fetching transactions...</p>
       ) : txns.length === 0 ? (
         <p className="text-gray-600">No recent transactions found.</p>
       ) : (
         <ul className="space-y-4">
-          {txns.map((t, i) => {
-            const signature = t.transaction?.signatures?.[0];
-            const status = t.meta?.err ? 'Failed ❌' : 'Success ✅';
-            const statusColor = t.meta?.err ? 'text-red-600' : 'text-green-600';
-            const date = t.blockTime ? new Date(t.blockTime * 1000).toLocaleString() : 'Unknown';
+          {txns.map((tx, index) => {
+            const signature = tx?.transaction?.signatures?.[0] ?? 'N/A';
+            const status = tx?.meta?.err ? '❌ Failed' : '✅ Success';
+            const statusColor = tx?.meta?.err ? 'text-red-600' : 'text-green-600';
+            const date = tx?.blockTime
+              ? new Date(tx.blockTime * 1000).toLocaleString()
+              : 'Unknown';
 
             return (
-              <li key={i} className="border rounded p-4 bg-gray-50">
+              <li key={index} className="border rounded p-4 bg-gray-50">
                 <p className="text-sm break-words">
                   <strong>Signature:</strong>{' '}
                   <a
@@ -63,7 +68,7 @@ export default function Transactions() {
                   <strong>Status:</strong> {status}
                 </p>
                 <p className="text-sm text-gray-700 mt-1">
-                  <strong>Slot:</strong> {t.slot}
+                  <strong>Slot:</strong> {tx?.slot ?? 'Unknown'}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
                   <strong>Time:</strong> {date}

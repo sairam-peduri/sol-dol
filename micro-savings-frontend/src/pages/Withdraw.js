@@ -4,8 +4,17 @@ import * as anchor from '@coral-xyz/anchor';
 import idl from '../idl/micro_savings.json';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
+// Safe IDL wrapper to prevent undefined errors
 function createSafeProgram(idl, programId, provider) {
-  const safeIdl = { ...idl, accounts: idl.accounts ?? [] };
+  const safeIdl = {
+    ...idl,
+    accounts: idl.accounts ?? [],
+    instructions: idl.instructions ?? [],
+    types: idl.types ?? [],
+    events: idl.events ?? [],
+    errors: idl.errors ?? [],
+    metadata: idl.metadata ?? {},
+  };
   return new anchor.Program(safeIdl, programId, provider);
 }
 
@@ -16,7 +25,9 @@ export default function Withdraw() {
   const { connection } = useConnection();
   const [program, setProgram] = useState(null);
   const [amount, setAmount] = useState('');
+  const [savingsPda, setSavingsPda] = useState(null);
 
+  // Set up program and PDA
   useEffect(() => {
     if (!publicKey || !window.solana) return;
 
@@ -24,18 +35,24 @@ export default function Withdraw() {
       preflightCommitment: 'processed',
     });
 
-    const programInstance = createSafeProgram(idl, PROGRAM_ID, provider)
+    const programInstance = createSafeProgram(idl, PROGRAM_ID, provider);
     setProgram(programInstance);
+
+    // Derive PDA using ["savings", user publicKey]
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("savings"), publicKey.toBuffer()],
+      PROGRAM_ID
+    );
+    setSavingsPda(pda);
   }, [publicKey, connection]);
 
   const withdraw = async () => {
-    if (!program || !publicKey) {
+    if (!program || !publicKey || !savingsPda) {
       alert('Please connect your wallet.');
       return;
     }
 
     const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
-
     if (isNaN(lamports) || lamports <= 0) {
       alert('Enter a valid amount.');
       return;
@@ -45,7 +62,7 @@ export default function Withdraw() {
       await program.methods
         .withdraw(new anchor.BN(lamports))
         .accounts({
-          savings: publicKey,
+          savings: savingsPda,
           user: publicKey,
         })
         .rpc();
@@ -53,7 +70,7 @@ export default function Withdraw() {
       alert('✅ Withdrawal successful!');
       setAmount('');
     } catch (e) {
-      console.error('Withdrawal failed:', e);
+      console.error('❌ Withdrawal failed:', e);
       alert('❌ Withdrawal failed: ' + (e.message || e.toString()));
     }
   };

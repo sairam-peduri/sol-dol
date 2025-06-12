@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import * as anchor from "@coral-xyz/anchor";
-import idl from "../idl/micro_savings.json";
+import rawIdl from "../idl/micro_savings.json";
 import { SystemProgram, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
-function createSafeProgram(idl, programId, provider) {
-  const safeIdl = { ...idl, accounts: idl.accounts ?? [] };
-  return new anchor.Program(safeIdl, programId, provider);
+// Merge `types[]` into `accounts[]` to ensure layout (size) compatibility
+function mergeTypesIntoAccounts(idl) {
+  const accounts = idl.accounts || [];
+  const types = idl.types || [];
+
+  return {
+    ...idl,
+    accounts: accounts.map((acc) => {
+      const matchedType = types.find((t) => t.name === acc.name);
+      return {
+        ...acc,
+        type: matchedType?.type || {},
+      };
+    }),
+  };
 }
 
-const PROGRAM_ID = new PublicKey(idl.address);
+const idl = mergeTypesIntoAccounts(rawIdl);
+const PROGRAM_ID = new PublicKey(idl.metadata?.address || idl.address);
 
 const Goals = () => {
-  const wallet = useWallet();
+  const { publicKey, wallet } = useWallet();
   const { connection } = useConnection();
   const [program, setProgram] = useState(null);
   const [goals, setGoals] = useState([]);
@@ -20,22 +33,22 @@ const Goals = () => {
   const [amount, setAmount] = useState("");
 
   useEffect(() => {
-    if (!wallet.publicKey) return;
+    if (!publicKey || !wallet) return;
 
     const provider = new anchor.AnchorProvider(connection, wallet, {
       preflightCommitment: "processed",
     });
 
-    const programInstance = createSafeProgram(idl, PROGRAM_ID, provider);
+    const programInstance = new anchor.Program(idl, PROGRAM_ID, provider);
     setProgram(programInstance);
-  }, [wallet, connection]);
+  }, [publicKey, wallet, connection]);
 
   const fetchGoals = async () => {
     try {
       const all = await program.account.goal.all();
       setGoals(all);
     } catch (e) {
-      console.error("Failed to fetch goals", e);
+      console.error("❌ Failed to fetch goals:", e);
     }
   };
 
@@ -44,7 +57,7 @@ const Goals = () => {
   }, [program]);
 
   const create = async () => {
-    if (!amount || isNaN(amount)) return alert("Enter valid amount");
+    if (!amount || isNaN(amount)) return alert("⚠️ Enter a valid amount");
 
     const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
     const kp = anchor.web3.Keypair.generate();
@@ -54,7 +67,7 @@ const Goals = () => {
         .createGoal(new anchor.BN(lamports), desc)
         .accounts({
           goal: kp.publicKey,
-          user: wallet.publicKey,
+          user: publicKey,
           systemProgram: SystemProgram.programId,
         })
         .signers([kp])
@@ -65,8 +78,8 @@ const Goals = () => {
       setAmount("");
       fetchGoals();
     } catch (e) {
-      console.error(e);
-      alert("Create goal failed: " + e.message);
+      console.error("❌ Create goal failed:", e);
+      alert("Failed: " + e.message);
     }
   };
 
@@ -81,14 +94,14 @@ const Goals = () => {
         .depositToGoal(new anchor.BN(lamports))
         .accounts({
           goal: goalPubkey,
-          user: wallet.publicKey,
+          user: publicKey,
         })
         .rpc();
 
-      alert("💸 Deposited to goal!");
+      alert("💸 Deposited successfully!");
       fetchGoals();
     } catch (e) {
-      console.error(e);
+      console.error("❌ Deposit failed:", e);
       alert("Deposit failed: " + e.message);
     }
   };
@@ -115,7 +128,7 @@ const Goals = () => {
           onClick={create}
           className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
         >
-          Create Goal
+          ➕ Create Goal
         </button>
       </div>
 
@@ -138,7 +151,7 @@ const Goals = () => {
                 onClick={() => fund(publicKey)}
                 className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
               >
-                Deposit to Goal
+                💰 Deposit to Goal
               </button>
             </li>
           );

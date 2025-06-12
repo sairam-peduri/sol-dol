@@ -45,7 +45,7 @@ pub mod micro_savings {
 
 #[derive(Accounts)]
 pub struct InitializeAccount<'info> {
-    #[account(init, payer = user, space = 8 + 32 + 8)] // 48 bytes
+    #[account(init, payer = user, space = 8 + 32 + 8)]
     pub savings: Account<'info, Savings>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -68,7 +68,7 @@ pub struct Withdraw<'info> {
 
 #[derive(Accounts)]
 pub struct CreateGoal<'info> {
-    #[account(init, payer = user, space = 8 + 32 + 8 + 8 + 4 + 256)] // 316 bytes
+    #[account(init, payer = user, space = 8 + 32 + 8 + 8 + 4 + 256)]
     pub goal: Account<'info, Goal>,
     #[account(mut)]
     pub user: Signer<'info>,

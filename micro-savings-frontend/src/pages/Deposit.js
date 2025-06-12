@@ -1,55 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import * as anchor from '@coral-xyz/anchor';
-import idl from '../idl/micro_savings.json';
+import idlRaw from '../idl/micro_savings.json';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
-function createSafeProgram(idl, programId, provider) {
-  const safeIdl = { ...idl, accounts: idl.accounts ?? [] };
-  return new anchor.Program(safeIdl, programId, provider);
+// Merge `types[]` into `accounts[]`
+function mergeTypesIntoAccounts(idl) {
+  const accounts = idl.accounts || [];
+  const types = idl.types || [];
+
+  return {
+    ...idl,
+    accounts: accounts.map((acc) => {
+      const matchedType = types.find((t) => t.name === acc.name);
+      return {
+        ...acc,
+        type: matchedType?.type || {},
+      };
+    }),
+  };
 }
 
-const PROGRAM_ID = new anchor.web3.PublicKey(idl.address);
+const idl = mergeTypesIntoAccounts(idlRaw);
+const PROGRAM_ID = new PublicKey(idl.metadata?.address || idl.address);
 
 export default function Deposit() {
-  const { publicKey } = useWallet();
+  const { publicKey, wallet } = useWallet();
   const { connection } = useConnection();
   const [program, setProgram] = useState(null);
   const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!publicKey) return;
+    if (!publicKey || !wallet) return;
 
-    const provider = new anchor.AnchorProvider(connection, window.solana, {});
-    const programInstance = createSafeProgram(idl, PROGRAM_ID, provider);
+    const provider = new anchor.AnchorProvider(connection, wallet, {
+      preflightCommitment: 'processed',
+    });
+    const programInstance = new anchor.Program(idl, PROGRAM_ID, provider);
     setProgram(programInstance);
-  }, [publicKey, connection]);
+  }, [publicKey, wallet, connection]);
 
   const deposit = async () => {
-    if (!program || !publicKey) return alert('Connect wallet first');
-    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return alert('Enter valid amount');
+    if (!program || !publicKey) return alert('🔌 Connect your wallet first.');
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0)
+      return alert('❗ Enter a valid amount.');
 
     const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
 
     const [savingsPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("savings"), publicKey.toBuffer()],
+      [Buffer.from('savings'), publicKey.toBuffer()],
       PROGRAM_ID
     );
 
     try {
+      setLoading(true);
+
       await program.methods
         .deposit(new anchor.BN(lamports))
         .accounts({
           savings: savingsPDA,
-          user: publicKey
+          user: publicKey,
         })
         .rpc();
 
-      alert('✅ Deposited successfully!');
+      alert(`✅ Deposited ${amount} SOL to your savings (${publicKey.toBase58().slice(0, 6)}...)`);
       setAmount('');
     } catch (e) {
-      console.error(e);
-      alert('⚠️ Error: ' + e.message);
+      console.error('⚠️ Deposit Error:', e);
+      alert('Deposit failed: ' + (e.message || e.toString()));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,9 +90,12 @@ export default function Deposit() {
 
         <button
           onClick={deposit}
-          className="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 transition"
+          disabled={loading}
+          className={`${
+            loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
+          } text-white py-2 px-4 rounded transition`}
         >
-          Deposit
+          {loading ? 'Depositing...' : 'Deposit'}
         </button>
       </div>
     </div>

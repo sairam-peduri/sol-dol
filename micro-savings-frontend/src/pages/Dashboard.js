@@ -1,12 +1,42 @@
-// src/pages/Dashboard.js
 import React, { useEffect, useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import * as anchor from '@coral-xyz/anchor';
-import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
-import idl from '../idl/micro_savings.json';
+import { AnchorProvider, web3 } from '@coral-xyz/anchor';
+import idlRaw from '../idl/micro_savings.json';
 import { PublicKey } from '@solana/web3.js';
 
-const PROGRAM_ID = new PublicKey('AXP5XUGdGcAYpmxzmJr54vrvdvgbsohGDNA3hUJ3oC3B');
+// ✅ Merge types into accounts to avoid .size error
+const mergeTypesIntoAccounts = (idl) => {
+  const accounts = idl.accounts || [];
+  const types = idl.types || [];
+
+  const mergedAccounts = accounts.map((account) => {
+    if (account.type?.kind === 'struct' && Array.isArray(account.type?.fields)) {
+      return account;
+    }
+
+    const match = types.find((t) => t.name === account.name);
+    if (!match) {
+      console.warn(`⚠️ No matching type found for account "${account.name}"`);
+    }
+
+    return {
+      ...account,
+      type: match?.type || {
+        kind: 'struct',
+        fields: [],
+      },
+    };
+  });
+
+  return {
+    ...idl,
+    accounts: mergedAccounts,
+  };
+};
+
+const idl = mergeTypesIntoAccounts(idlRaw);
+const PROGRAM_ID = new PublicKey(idl.metadata?.address || idl.address);
 
 export default function Dashboard() {
   const { publicKey, wallet } = useWallet();
@@ -15,30 +45,22 @@ export default function Dashboard() {
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Safe initializer
-  const createSafeProgram = (idl, programId, provider) => {
-    const safeIdl = {
-      ...idl,
-      accounts: idl.accounts ?? [],
-      instructions: idl.instructions ?? [],
-      metadata: idl.metadata ?? {},
-    };
-    return new Program(safeIdl, programId, provider);
-  };
-
   useEffect(() => {
     const initProgram = async () => {
-      setLoading(true);
+      console.log('✅ useEffect running. Wallet:', wallet);
+      console.log('🔑 publicKey:', publicKey?.toBase58());
 
-      if (!publicKey || !wallet || !connection) {
-        setProgram(null);
+      if (!publicKey || !wallet?.adapter?.signTransaction || !connection) {
+        console.warn('⚠️ Wallet not fully connected or missing adapter methods');
         setLoading(false);
         return;
       }
 
+      setLoading(true);
+
       try {
         const provider = new AnchorProvider(connection, wallet, {});
-        const programInstance = createSafeProgram(idl, PROGRAM_ID, provider);
+        const programInstance = new anchor.Program(idl, PROGRAM_ID, provider);
         setProgram(programInstance);
 
         const [savingsPDA] = PublicKey.findProgramAddressSync(
@@ -54,11 +76,11 @@ export default function Dashboard() {
           setInitialized(false);
         }
       } catch (err) {
-        console.error('⚠️ Error setting up program:', err);
+        console.error('❌ Error setting up program:', err);
         setProgram(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     initProgram();
